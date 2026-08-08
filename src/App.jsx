@@ -121,6 +121,41 @@
      with check (bucket_id = 'logos' and auth.role() = 'authenticated');
    create policy "auth update logos" on storage.objects for update
      using (bucket_id = 'logos' and auth.role() = 'authenticated');
+
+   Página do aluno: cada aluno recebe um link privado (sem login) baseado
+   num token único. Rode isto também:
+
+   alter table students add column if not exists access_token uuid unique default gen_random_uuid();
+
+   create or replace function get_aluno_portal(token uuid)
+   returns json
+   language sql
+   security definer
+   as $$
+     select json_build_object(
+       'student', (select json_build_object('id', id, 'nome', nome, 'plano', plano, 'status', status) from students where access_token = token),
+       'payments', (select coalesce(json_agg(p), '[]') from payments p where p.student_id = (select id from students where access_token = token)),
+       'workouts', (select coalesce(json_agg(w), '[]') from workouts w where w.student_id = (select id from students where access_token = token)),
+       'evaluations', (select coalesce(json_agg(e), '[]') from evaluations e where e.student_id = (select id from students where access_token = token)),
+       'checkins', (select coalesce(json_agg(c), '[]') from checkins c where c.student_id = (select id from students where access_token = token))
+     );
+   $$;
+   grant execute on function get_aluno_portal(uuid) to anon, authenticated;
+
+   create or replace function aluno_checkin(token uuid)
+   returns json
+   language plpgsql
+   security definer
+   as $$
+   declare sid uuid;
+   begin
+     select id into sid from students where access_token = token;
+     if sid is null then raise exception 'Link inválido'; end if;
+     insert into checkins (student_id, data, hora) values (sid, current_date, to_char(now(), 'HH24:MI'));
+     return json_build_object('ok', true);
+   end;
+   $$;
+   grant execute on function aluno_checkin(uuid) to anon, authenticated;
    ========================================================================= */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -142,7 +177,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ---------- design tokens ----------
 const C = {
   bg: "#EDEBE6", panel: "#FFFFFF", ink: "#1C1C1E", inkSoft: "#6B6A66",
-  sidebar: "#16171B", sidebarSoft: "#232428", sidebarLine: "#ffffff",
+  sidebar: "#16171B", sidebarSoft: "#232428", sidebarLine: "#333438",
   lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
@@ -186,7 +221,7 @@ const TABLE_MAP = {
   students: {
     table: "students",
     toDb: (s) => ({ nome: s.nome, telefone: s.telefone, plano: s.plano, matricula: s.matricula, status: s.status }),
-    fromDb: (r) => ({ id: r.id, nome: r.nome, telefone: r.telefone, plano: r.plano, matricula: r.matricula, status: r.status }),
+    fromDb: (r) => ({ id: r.id, nome: r.nome, telefone: r.telefone, plano: r.plano, matricula: r.matricula, status: r.status, accessToken: r.access_token }),
   },
   payments: {
     table: "payments",
@@ -348,6 +383,12 @@ function Login({ settings }) {
 
 // ================= APP =================
 export default function GestaoAcademia() {
+  const alunoToken = new URLSearchParams(window.location.search).get("aluno");
+  if (alunoToken) return <AlunoPortal token={alunoToken} />;
+  return <StaffApp />;
+}
+
+function StaffApp() {
   const [session, setSession] = useState(undefined); // undefined = carregando, null = deslogado
   const [role, setRole] = useState("recepcao");
   const [dataReady, setDataReady] = useState(false);
@@ -536,7 +577,7 @@ function Dashboard({ students, payments, checkins, studentName }) {
             <div key={s.label} className="p-5" style={{ background: C.sidebar }}>
               <Icon size={16} color={C.lime} />
               <div style={{ ...fontMono, fontSize: "1.9rem", color: C.lime, lineHeight: 1 }} className="mt-3">{s.value}</div>
-              <div className="text-xs mt-2" style={{ color: "#ffffff" }}>{s.label}</div>
+              <div className="text-xs mt-2" style={{ color: "#9A9A9E" }}>{s.label}</div>
             </div>
           );
         })}
@@ -580,9 +621,16 @@ function Alunos({ students, api, payments, checkins }) {
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ nome: "", telefone: "", plano: "Mensal", matricula: todayISO() });
+  const [copiedId, setCopiedId] = useState(null);
   const filtered = students.filter((s) => s.nome.toLowerCase().includes(query.toLowerCase()));
 
   function addStudent(e) { e.preventDefault(); if (!form.nome.trim()) return; api.add({ ...form, status: "ativo" }); setForm({ nome: "", telefone: "", plano: "Mensal", matricula: todayISO() }); setShowForm(false); }
+
+  async function copyLink(s) {
+    if (!s.accessToken) { alert("Esse aluno ainda não tem um link — rode a migração da página do aluno no Supabase (veja o topo do arquivo do app) e recarregue a página."); return; }
+    const url = `${window.location.origin}${window.location.pathname}?aluno=${s.accessToken}`;
+    try { await navigator.clipboard.writeText(url); setCopiedId(s.id); setTimeout(() => setCopiedId(null), 2000); } catch { alert(url); }
+  }
 
   return (
     <div>
@@ -612,6 +660,7 @@ function Alunos({ students, api, payments, checkins }) {
                 <div className="text-xs" style={{ color: C.inkSoft }}>{totalCheckins} check-ins</div>
                 <div className="ml-auto flex items-center gap-2">
                   <Badge tone={s.status === "ativo" ? "green" : "neutral"}>{s.status}</Badge>
+                  <GhostButton onClick={() => copyLink(s)}><MessageCircle size={13} /> {copiedId === s.id ? "Copiado!" : "Link do aluno"}</GhostButton>
                   <GhostButton onClick={() => api.update(s.id, { status: s.status === "ativo" ? "inativo" : "ativo" })}>{s.status === "ativo" ? "Inativar" : "Reativar"}</GhostButton>
                   <button onClick={() => api.remove(s.id)} className="p-2 rounded-lg" style={{ color: C.red }}><Trash2 size={16} /></button>
                 </div>
@@ -1073,6 +1122,146 @@ function Configuracoes({ settings, onSave }) {
       </Panel>
       <div className="text-xs" style={{ color: C.inkSoft }}>
         O nome e o logo aparecem na barra lateral e na tela de login para todos os usuários. Só quem tem perfil "Dono(a)" pode alterar essas configurações.
+      </div>
+    </div>
+  );
+}
+
+// ---------- página do aluno (sem login, acesso por link privado) ----------
+function AlunoPortal({ token }) {
+  const [state, setState] = useState({ status: "loading" }); // loading | ok | error
+  const [checkinMsg, setCheckinMsg] = useState("");
+
+  async function load() {
+    try {
+      const { data, error } = await supabase.rpc("get_aluno_portal", { token });
+      if (error) throw error;
+      if (!data?.student) { setState({ status: "notfound" }); return; }
+      setState({ status: "ok", data });
+    } catch {
+      setState({ status: "error" });
+    }
+  }
+
+  useEffect(() => { load(); }, [token]);
+
+  async function fazerCheckin() {
+    setCheckinMsg("Registrando...");
+    try {
+      const { error } = await supabase.rpc("aluno_checkin", { token });
+      if (error) throw error;
+      setCheckinMsg("Check-in registrado! 💪");
+      load();
+    } catch {
+      setCheckinMsg("Não foi possível registrar. Tente de novo.");
+    }
+    setTimeout(() => setCheckinMsg(""), 3000);
+  }
+
+  if (state.status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}><Loader2 className="animate-spin" size={22} color={C.inkSoft} /></div>;
+  }
+  if (state.status === "notfound" || state.status === "error") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: C.bg, fontFamily: "Inter, sans-serif" }}>
+        <div>
+          <div className="font-semibold mb-2">Link inválido ou expirado</div>
+          <div className="text-sm" style={{ color: C.inkSoft }}>Peça para a academia gerar um novo link para você.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { student, payments, workouts, evaluations, checkins } = state.data;
+  const sortedEvals = [...evaluations].sort((a, b) => a.data.localeCompare(b.data)).map((e) => ({ ...e, imc: calcImc(e.peso, e.altura) }));
+  const chartData = sortedEvals.map((e) => ({ data: fmtDate(e.data).slice(0, 5), peso: e.peso }));
+  const checkinsToday = checkins.filter((c) => c.data === today);
+  const overdue = payments.filter((p) => p.status === "atrasado");
+
+  return (
+    <div className="min-h-screen w-full" style={{ background: C.bg, color: C.ink, fontFamily: "Inter, sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');`}</style>
+      <div className="max-w-2xl mx-auto px-5 py-8">
+        <div className="mb-6">
+          <div style={{ ...fontDisplay, fontSize: "1.8rem", lineHeight: 1 }}>Olá, {student.nome.split(" ")[0]}</div>
+          <div className="text-sm mt-1" style={{ color: C.inkSoft }}>{student.plano} · <Badge tone={student.status === "ativo" ? "green" : "neutral"}>{student.status}</Badge></div>
+        </div>
+
+        {overdue.length > 0 && (
+          <Panel className="p-4 mb-5" style={{ borderColor: C.red }}>
+            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.red }}><AlertTriangle size={15} /> Você tem {overdue.length} mensalidade(s) em atraso</div>
+          </Panel>
+        )}
+
+        <Panel className="p-5 mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-semibold">Check-in</div>
+            <div className="text-xs" style={{ color: C.inkSoft }}>{checkinsToday.length > 0 ? "já feito hoje" : "ainda não feito hoje"}</div>
+          </div>
+          <PrimaryButton onClick={fazerCheckin}><CalendarCheck size={16} /> Fazer check-in agora</PrimaryButton>
+          {checkinMsg && <div className="text-xs mt-2" style={{ color: C.limeDark }}>{checkinMsg}</div>}
+        </Panel>
+
+        <Panel className="p-5 mb-5">
+          <div className="font-semibold mb-3">Mensalidades</div>
+          <div className="flex flex-col gap-2">
+            {payments.slice().reverse().map((p) => (
+              <div key={p.id} className="flex items-center gap-3 text-sm">
+                <span className="flex-1">{mesLabel(p.mes_ref)}</span>
+                <span style={fontMono}>{fmtBRL(p.valor)}</span>
+                <Badge tone={p.status === "pago" ? "green" : p.status === "atrasado" ? "red" : "amber"}>{p.status}</Badge>
+              </div>
+            ))}
+            {payments.length === 0 && <div className="text-sm" style={{ color: C.inkSoft }}>Nenhuma cobrança registrada.</div>}
+          </div>
+        </Panel>
+
+        <Panel className="p-5 mb-5">
+          <div className="font-semibold mb-3">Meus treinos</div>
+          <div className="flex flex-col gap-4">
+            {workouts.map((w) => (
+              <div key={w.id}>
+                <div className="text-sm font-semibold">{w.nome} <Badge tone="neutral">{w.tipo}</Badge></div>
+                <div className="flex flex-col gap-1 mt-1">
+                  {(w.exercicios || []).map((ex, i) => (
+                    <div key={i} className="flex justify-between text-sm"><span>{ex.nome}</span><span style={{ ...fontMono, color: C.inkSoft }}>{ex.series}</span></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {workouts.length === 0 && <div className="text-sm" style={{ color: C.inkSoft }}>Nenhum treino cadastrado ainda.</div>}
+          </div>
+        </Panel>
+
+        <Panel className="p-5">
+          <div className="font-semibold mb-3">Minha evolução</div>
+          {chartData.length > 1 ? (
+            <div style={{ height: 200 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid stroke={C.border} strokeDasharray="3 3" />
+                  <XAxis dataKey="data" tick={{ fontSize: 11, fill: C.inkSoft }} />
+                  <YAxis tick={{ fontSize: 11, fill: C.inkSoft }} width={35} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }} />
+                  <Line type="monotone" dataKey="peso" stroke={C.limeDark} strokeWidth={2.5} dot={{ r: 3 }} name="Peso (kg)" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <div className="text-sm" style={{ color: C.inkSoft }}>Ainda não há avaliações suficientes para mostrar o gráfico.</div>}
+          <div className="flex flex-col gap-2 mt-4">
+            {sortedEvals.slice().reverse().map((e) => {
+              const faixa = imcFaixa(e.imc);
+              return (
+                <div key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-medium min-w-[85px]">{fmtDate(e.data)}</span>
+                  <span style={fontMono}>{e.peso} kg</span>
+                  {faixa && <Badge tone={faixa.tone}>IMC {e.imc}</Badge>}
+                  {e.gordura != null && <Badge tone="blue">{e.gordura}% gordura</Badge>}
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
       </div>
     </div>
   );
