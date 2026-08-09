@@ -1191,17 +1191,23 @@ function Configuracoes({ settings, onSave, currentUserId }) {
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(false);
+  const [roleSavingId, setRoleSavingId] = useState(null);
+  const [roleError, setRoleError] = useState("");
 
   useEffect(() => {
     fetchAccounts().then((a) => { setAccounts(a); setAccountsLoading(false); }).catch(() => { setAccountsError(true); setAccountsLoading(false); });
   }, []);
 
   async function changeRole(id, role) {
+    setRoleError("");
+    setRoleSavingId(id);
     try {
       const updated = await updateAccountRole(id, role);
-      setAccounts((prev) => prev.map((a) => (a.id === id ? updated : a)));
-    } catch {
-      setAccountsError(true);
+      setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)));
+    } catch (err) {
+      setRoleError(err?.message || "Não foi possível alterar o nível da conta.");
+    } finally {
+      setRoleSavingId(null);
     }
   }
 
@@ -1264,6 +1270,7 @@ function Configuracoes({ settings, onSave, currentUserId }) {
         <div className="text-xs mb-4" style={{ color: C.inkSoft }}>Quem cria conta pela tela de login entra como "Aguardando aprovação" até você liberar o nível aqui.</div>
         {accountsLoading && <div className="text-sm" style={{ color: C.inkSoft }}>Carregando contas...</div>}
         {accountsError && <div className="text-sm" style={{ color: C.red }}>Não foi possível carregar as contas. Confira se rodou a migração de controle de contas no Supabase.</div>}
+        {roleError && <div className="text-sm mb-3 p-2 rounded-lg" style={{ color: C.red, background: C.redSoft, border: `1px solid ${C.red}33` }}>Não foi possível alterar esta conta: {roleError}</div>}
         <div className="flex flex-col">
           {accounts.map((a) => {
             const isSelf = a.id === currentUserId;
@@ -1272,8 +1279,17 @@ function Configuracoes({ settings, onSave, currentUserId }) {
                 <div className="text-sm flex-1 min-w-[160px]">{a.email} {isSelf && <span style={{ color: C.inkSoft }}>(você)</span>}</div>
                 <Badge tone={a.role === "dono" ? "green" : a.role === "bloqueado" ? "red" : a.role === "pendente" ? "amber" : "neutral"}>{ROLE_LABELS[a.role] || a.role}</Badge>
                 <select
-                  disabled={isSelf}
-                  style={{ ...inputStyle, width: "auto" }}
+                  disabled={isSelf || roleSavingId === a.id}
+                  aria-label={`Nível de acesso de ${a.email}`}
+                  title={isSelf ? "Sua própria conta não pode ter o nível alterado aqui." : "Selecione o nível de acesso desta conta"}
+                  style={{
+                    ...inputStyle,
+                    width: "auto",
+                    minWidth: 190,
+                    cursor: isSelf || roleSavingId === a.id ? "not-allowed" : "pointer",
+                    opacity: isSelf ? 0.65 : 1,
+                    borderColor: !isSelf ? C.limeDark : C.border,
+                  }}
                   value={a.role}
                   onChange={(e) => changeRole(a.id, e.target.value)}
                 >
@@ -1283,6 +1299,7 @@ function Configuracoes({ settings, onSave, currentUserId }) {
                   <option value="dono">Dono(a)</option>
                   <option value="bloqueado">Bloqueado</option>
                 </select>
+                {roleSavingId === a.id && <span className="text-xs" style={{ color: C.inkSoft }}>Salvando...</span>}
               </div>
             );
           })}
