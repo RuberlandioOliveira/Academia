@@ -449,7 +449,7 @@ export default function GestaoAcademia() {
 
 function StaffApp() {
   const [session, setSession] = useState(undefined); // undefined = carregando, null = deslogado
-  const [role, setRole] = useState("recepcao");
+  const [role, setRole] = useState("pendente");
   const [dataReady, setDataReady] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [tab, setTab] = useState("dashboard");
@@ -476,7 +476,7 @@ function StaffApp() {
     (async () => {
       setDataReady(false);
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
-      setRole(profile?.role || "recepcao");
+      setRole(profile?.role || "pendente");
       const [st, pa, wo, ch, ev, cl] = await Promise.all([
         fetchAll("students"), fetchAll("payments"), fetchAll("workouts"),
         fetchAll("checkins"), fetchAll("evaluations"), fetchAll("classes"),
