@@ -200,7 +200,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ---------- design tokens ----------
 const C = {
   bg: "#EDEBE6", panel: "#FFFFFF", ink: "#000000", inkSoft: "#000000",
-  sidebar: "#040f3c", sidebarSoft: "#055916", sidebarLine: "#ffffff",
+  sidebar: "#040f3c", sidebarSoft: "#064f15", sidebarLine: "#ffffff",
   lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
