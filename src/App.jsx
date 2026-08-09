@@ -156,6 +156,29 @@
    end;
    $$;
    grant execute on function aluno_checkin(uuid) to anon, authenticated;
+
+   Controle de contas: novas contas passam a nascer como "pendente" (sem
+   acesso a nada) até o dono aprovar. O dono também passa a poder ver e
+   alterar o nível de todas as contas. Rode isto também:
+
+   create or replace function public.handle_new_user() returns trigger as $$
+   begin
+     insert into public.profiles (id, email, role) values (new.id, new.email, 'pendente');
+     return new;
+   end;
+   $$ language plpgsql security definer;
+
+   create or replace function is_dono()
+   returns boolean
+   language sql
+   security definer
+   stable
+   as $$
+     select role = 'dono' from profiles where id = auth.uid();
+   $$;
+
+   create policy "dono read all profiles" on profiles for select using (is_dono());
+   create policy "dono update all profiles" on profiles for update using (is_dono());
    ========================================================================= */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -171,14 +194,14 @@ import {
 
 // ---------- Supabase ----------
 const SUPABASE_URL = "https://grxhispuduwibclhxnch.supabase.co"; // TODO: cole a Project URL
-const SUPABASE_ANON_KEY = "sb_publishable_PgvQEQ42x1VL0BtWDtU9_Q_EnSQFCDq"; // TODO: cole a anon public key
+const SUPABASE_ANON_KEY = "sb_publishable_PgvQEQ42x1VL0BtWDtU9_Q_EnSQFCD"; // TODO: cole a anon public key
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- design tokens ----------
 const C = {
-  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#060606", inkSoft: "#070707",
-  sidebar: "#020c32", sidebarSoft: "#066516", sidebarLine: "#ffffff",
-  lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#ffffff",
+  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#1C1C1E", inkSoft: "#6B6A66",
+  sidebar: "#16171B", sidebarSoft: "#232428", sidebarLine: "#333438",
+  lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
 };
@@ -200,8 +223,10 @@ const ROLE_TABS = {
   dono: ["dashboard", "alunos", "mensalidades", "treinos", "avaliacoes", "turmas", "frequencia", "relatorios", "configuracoes"],
   recepcao: ["dashboard", "alunos", "mensalidades", "turmas", "frequencia"],
   instrutor: ["dashboard", "treinos", "avaliacoes", "frequencia"],
+  pendente: [],
+  bloqueado: [],
 };
-const ROLE_LABELS = { dono: "Dono(a)", recepcao: "Recepção", instrutor: "Instrutor(a)" };
+const ROLE_LABELS = { dono: "Dono(a)", recepcao: "Recepção", instrutor: "Instrutor(a)", pendente: "Aguardando aprovação", bloqueado: "Bloqueado" };
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const WEEKDAYS = [
   { id: "SU", label: "Dom" }, { id: "MO", label: "Seg" }, { id: "TU", label: "Ter" },
@@ -297,6 +322,17 @@ async function uploadLogo(file) {
   return data.publicUrl;
 }
 
+async function fetchAccounts() {
+  const { data, error } = await supabase.from("profiles").select("id, email, role").order("email");
+  if (error) throw error;
+  return data;
+}
+async function updateAccountRole(id, role) {
+  const { data, error } = await supabase.from("profiles").update({ role }).eq("id", id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 // ---------- ui pieces (iguais à versão anterior) ----------
 function Badge({ children, tone = "neutral" }) {
   const tones = { neutral: { bg: "#F0EEE9", color: C.inkSoft }, green: { bg: C.greenSoft, color: C.greenText }, amber: { bg: C.amberSoft, color: C.amberText }, red: { bg: C.redSoft, color: C.red }, blue: { bg: C.blueSoft, color: C.blueText } };
@@ -363,16 +399,16 @@ function Login({ settings }) {
         ) : (
           <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "FERRO"}</div>
         )}
-        {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.8rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "Sistema"}</div>}
-        <div className="text-sm text-center mb-8" style={{ color: "#ffffff" }}>gestão da academia</div>
+        {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.8rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "FERRO"}</div>}
+        <div className="text-sm text-center mb-8" style={{ color: "#9A9A9E" }}>gestão da academia</div>
         <form onSubmit={submit} className="flex flex-col gap-3 p-6 rounded-2xl" style={{ background: C.sidebarSoft, border: `1px solid ${C.sidebarLine}` }}>
-          <input required type="email" placeholder="e-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#26272d", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
+          <input required type="email" placeholder="e-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#1C1D21", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
           <input required type="password" placeholder="senha" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#1C1D21", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
           {error && <div className="text-xs" style={{ color: C.red }}>{error}</div>}
           <button type="submit" disabled={loading} className="mt-1 py-2.5 rounded-lg text-sm font-bold disabled:opacity-50" style={{ background: C.lime, color: C.ink }}>
             {loading ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
           </button>
-          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-xs mt-1" style={{ color: "#ffffff" }}>
+          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-xs mt-1" style={{ color: "#9A9A9E" }}>
             {mode === "signin" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
           </button>
         </form>
@@ -466,7 +502,9 @@ function StaffApp() {
   const studentName = (id) => students.find((s) => s.id === id)?.nome ?? "—";
   const visibleTabs = ALL_TABS.filter((t) => ROLE_TABS[role]?.includes(t.id));
 
-  useEffect(() => { if (dataReady && !ROLE_TABS[role]?.includes(tab)) setTab("dashboard"); }, [role, dataReady]);
+  useEffect(() => {
+    if (dataReady && ROLE_TABS[role]?.length > 0 && !ROLE_TABS[role].includes(tab)) setTab(ROLE_TABS[role][0]);
+  }, [role, dataReady]);
 
   if (session === undefined) {
     return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}><Loader2 className="animate-spin" size={22} color={C.inkSoft} /></div>;
@@ -482,6 +520,10 @@ function StaffApp() {
         </div>
       </div>
     );
+  }
+
+  if (role === "pendente" || role === "bloqueado") {
+    return <AccessBlocked role={role} settings={settings} />;
   }
 
   return (
@@ -522,7 +564,7 @@ function StaffApp() {
           </nav>
         </div>
         <div className="px-4 pb-6">
-          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#ffffff" }}>
+          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#8C8C90" }}>
             <LogOut size={13} /> Sair
           </button>
         </div>
@@ -533,7 +575,7 @@ function StaffApp() {
           const Icon = t.icon; const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 px-2 py-1 shrink-0">
-              <Icon size={17} color={active ? C.lime : "#ffffff"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#ffffff" }}>{t.label}</span>
+              <Icon size={17} color={active ? C.lime : "#8C8C90"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#8C8C90" }}>{t.label}</span>
             </button>
           );
         })}
@@ -548,7 +590,7 @@ function StaffApp() {
         {tab === "turmas" && <Turmas students={students} classes={classes} api={api.classes} studentName={studentName} />}
         {tab === "frequencia" && <Frequencia students={students} checkins={checkins} api={api.checkins} studentName={studentName} />}
         {tab === "relatorios" && <Relatorios students={students} payments={payments} />}
-        {tab === "configuracoes" && <Configuracoes settings={settings} onSave={api.settings.save} />}
+        {tab === "configuracoes" && <Configuracoes settings={settings} onSave={api.settings.save} currentUserId={session.user.id} />}
       </main>
     </div>
   );
@@ -577,7 +619,7 @@ function Dashboard({ students, payments, checkins, studentName }) {
             <div key={s.label} className="p-5" style={{ background: C.sidebar }}>
               <Icon size={16} color={C.lime} />
               <div style={{ ...fontMono, fontSize: "1.9rem", color: C.lime, lineHeight: 1 }} className="mt-3">{s.value}</div>
-              <div className="text-xs mt-2" style={{ color: "#ffffff" }}>{s.label}</div>
+              <div className="text-xs mt-2" style={{ color: "#9A9A9E" }}>{s.label}</div>
             </div>
           );
         })}
@@ -978,16 +1020,16 @@ function Frequencia({ students, checkins, api, studentName }) {
   if (fullscreen) {
     return (
       <div className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6" style={{ background: C.sidebar }}>
-        <button onClick={() => setFullscreen(false)} className="absolute top-6 right-6 p-2 rounded-lg" style={{ color: "#ffffff" }}><Minimize2 size={20} /></button>
+        <button onClick={() => setFullscreen(false)} className="absolute top-6 right-6 p-2 rounded-lg" style={{ color: "#9A9A9E" }}><Minimize2 size={20} /></button>
         <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime }}>Check-in</div>
-        <div className="text-sm mb-8" style={{ color: "#ffffff" }}>{fmtDate(today)}</div>
-        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="text-lg rounded-xl px-4 py-3 mb-4 w-full max-w-sm" style={{ background: C.sidebarSoft, color: "#ffffff", border: `1px solid ${C.sidebarLine}` }}>
+        <div className="text-sm mb-8" style={{ color: "#9A9A9E" }}>{fmtDate(today)}</div>
+        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="text-lg rounded-xl px-4 py-3 mb-4 w-full max-w-sm" style={{ background: C.sidebarSoft, color: "#fff", border: `1px solid ${C.sidebarLine}` }}>
           {students.filter((s) => s.status === "ativo").map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
         </select>
         <button onClick={registerCheckin} className="w-full max-w-sm py-4 rounded-xl text-lg font-bold" style={{ background: C.lime, color: C.ink }}>Registrar entrada</button>
         <div className="mt-10 w-full max-w-sm">
-          <div className="text-xs mb-3" style={{ color: "#ffffff" }}>últimos check-ins de hoje</div>
-          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#ffffff" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}</span></div>))}</div>
+          <div className="text-xs mb-3" style={{ color: "#9A9A9E" }}>últimos check-ins de hoje</div>
+          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#E4E4E6" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}</span></div>))}</div>
         </div>
       </div>
     );
@@ -1060,11 +1102,27 @@ function Relatorios({ students, payments }) {
 }
 
 // ---------- configurações ----------
-function Configuracoes({ settings, onSave }) {
+function Configuracoes({ settings, onSave, currentUserId }) {
   const [form, setForm] = useState({ nome: settings?.nome || "", telefone: settings?.telefone || "", endereco: settings?.endereco || "", email: settings?.email || "" });
   const [logoUrl, setLogoUrl] = useState(settings?.logoUrl || "");
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [accountsError, setAccountsError] = useState(false);
+
+  useEffect(() => {
+    fetchAccounts().then((a) => { setAccounts(a); setAccountsLoading(false); }).catch(() => { setAccountsError(true); setAccountsLoading(false); });
+  }, []);
+
+  async function changeRole(id, role) {
+    try {
+      const updated = await updateAccountRole(id, role);
+      setAccounts((prev) => prev.map((a) => (a.id === id ? updated : a)));
+    } catch {
+      setAccountsError(true);
+    }
+  }
 
   async function handleLogoChange(e) {
     const file = e.target.files[0];
@@ -1120,8 +1178,60 @@ function Configuracoes({ settings, onSave }) {
           </div>
         </form>
       </Panel>
+      <Panel className="p-5 mb-6">
+        <div className="font-semibold mb-1">Contas de acesso</div>
+        <div className="text-xs mb-4" style={{ color: C.inkSoft }}>Quem cria conta pela tela de login entra como "Aguardando aprovação" até você liberar o nível aqui.</div>
+        {accountsLoading && <div className="text-sm" style={{ color: C.inkSoft }}>Carregando contas...</div>}
+        {accountsError && <div className="text-sm" style={{ color: C.red }}>Não foi possível carregar as contas. Confira se rodou a migração de controle de contas no Supabase.</div>}
+        <div className="flex flex-col">
+          {accounts.map((a) => {
+            const isSelf = a.id === currentUserId;
+            return (
+              <div key={a.id} className="flex flex-wrap items-center gap-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
+                <div className="text-sm flex-1 min-w-[160px]">{a.email} {isSelf && <span style={{ color: C.inkSoft }}>(você)</span>}</div>
+                <Badge tone={a.role === "dono" ? "green" : a.role === "bloqueado" ? "red" : a.role === "pendente" ? "amber" : "neutral"}>{ROLE_LABELS[a.role] || a.role}</Badge>
+                <select
+                  disabled={isSelf}
+                  style={{ ...inputStyle, width: "auto" }}
+                  value={a.role}
+                  onChange={(e) => changeRole(a.id, e.target.value)}
+                >
+                  <option value="pendente">Aguardando aprovação</option>
+                  <option value="recepcao">Recepção</option>
+                  <option value="instrutor">Instrutor(a)</option>
+                  <option value="dono">Dono(a)</option>
+                  <option value="bloqueado">Bloqueado</option>
+                </select>
+              </div>
+            );
+          })}
+          {!accountsLoading && !accountsError && accounts.length === 0 && <div className="text-sm py-2" style={{ color: C.inkSoft }}>Nenhuma conta criada ainda.</div>}
+        </div>
+        <div className="text-xs mt-4" style={{ color: C.inkSoft }}>
+          Para apagar uma conta de vez (não só bloquear), use o painel do Supabase: Authentication → Users → excluir o usuário.
+        </div>
+      </Panel>
+
       <div className="text-xs" style={{ color: C.inkSoft }}>
         O nome e o logo aparecem na barra lateral e na tela de login para todos os usuários. Só quem tem perfil "Dono(a)" pode alterar essas configurações.
+      </div>
+    </div>
+  );
+}
+
+// ---------- tela de conta pendente/bloqueada ----------
+function AccessBlocked({ role, settings }) {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ background: C.bg, fontFamily: "Inter, sans-serif" }}>
+      <div className="text-center max-w-sm">
+        <div style={{ ...fontDisplay, fontSize: "1.8rem" }}>{settings?.nome || "FERRO"}</div>
+        <div className="font-semibold mt-4 mb-2">{role === "pendente" ? "Conta aguardando aprovação" : "Acesso bloqueado"}</div>
+        <div className="text-sm mb-6" style={{ color: C.inkSoft }}>
+          {role === "pendente"
+            ? "Sua conta foi criada, mas ainda precisa ser liberada por um administrador da academia."
+            : "Seu acesso a este sistema foi bloqueado por um administrador da academia."}
+        </div>
+        <GhostButton onClick={() => supabase.auth.signOut()}><LogOut size={14} /> Sair</GhostButton>
       </div>
     </div>
   );
