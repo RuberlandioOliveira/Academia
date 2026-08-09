@@ -645,8 +645,8 @@ function StaffApp() {
           </nav>
         </div>
         <div className="px-4 pb-6">
-          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#ffffff" }}>
-            <LogOut size={18} /> Sair
+          <button onClick={() => supabase.auth.signOut()} className="flex w-full items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border" style={{ color: "#ffffff", borderColor: "rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.06)" }}>
+            <LogOut size={19} /> Sair
           </button>
         </div>
       </aside>
@@ -1312,7 +1312,7 @@ function AccessBlocked({ role, settings }) {
             ? "Sua conta foi criada, mas ainda precisa ser liberada por um administrador da academia."
             : "Seu acesso a este sistema foi bloqueado por um administrador da academia."}
         </div>
-        <GhostButton onClick={() => supabase.auth.signOut()}><LogOut size={14} /> Sair</GhostButton>
+        <GhostButton onClick={() => supabase.auth.signOut()} className="px-5 py-3 text-sm font-semibold"><LogOut size={16} /> Sair</GhostButton>
       </div>
     </div>
   );
