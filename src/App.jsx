@@ -348,8 +348,8 @@ function Panel({ children, style, className = "" }) {
 function PrimaryButton({ children, onClick, type = "button", disabled }) {
   return <button type={type} onClick={onClick} disabled={disabled} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-transform active:scale-95 disabled:opacity-50" style={{ background: C.lime, color: C.ink }}>{children}</button>;
 }
-function GhostButton({ children, onClick }) {
-  return <button onClick={onClick} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors" style={{ borderColor: C.border, color: C.ink, background: "transparent" }}>{children}</button>;
+function GhostButton({ children, onClick, danger = false }) {
+  return <button onClick={onClick} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${danger ? "btn-danger" : ""}`} style={{ borderColor: danger ? C.red : C.border, color: danger ? C.red : C.ink, background: "transparent" }}>{children}</button>;
 }
 function Field({ label, children }) {
   return <label className="flex flex-col gap-1 text-sm"><span style={{ color: C.inkSoft }} className="font-medium">{label}</span>{children}</label>;
@@ -401,6 +401,20 @@ function Login({ settings }) {
           box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
         }
         button:not(:disabled):active { transform: scale(0.97); }
+
+        /* Ações destrutivas: excluir, remover e cancelar ficam vermelhas */
+        .btn-danger:not(:disabled) {
+          border-color: ${C.red} !important;
+          color: ${C.red} !important;
+        }
+        .btn-danger:not(:disabled):hover,
+        .btn-danger-icon:not(:disabled):hover,
+        .btn-danger-text:not(:disabled):hover {
+          background: ${C.red} !important;
+          color: #fff !important;
+          border-color: ${C.red} !important;
+          box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15), 0 4px 14px rgba(220, 38, 38, 0.22);
+        }
       `}</style>
       <div className="w-full max-w-sm">
         {settings?.logoUrl ? (
@@ -532,6 +546,20 @@ function StaffApp() {
           box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
         }
         button:not(:disabled):active { transform: scale(0.97); }
+
+        /* Ações destrutivas: excluir, remover e cancelar ficam vermelhas */
+        .btn-danger:not(:disabled) {
+          border-color: ${C.red} !important;
+          color: ${C.red} !important;
+        }
+        .btn-danger:not(:disabled):hover,
+        .btn-danger-icon:not(:disabled):hover,
+        .btn-danger-text:not(:disabled):hover {
+          background: ${C.red} !important;
+          color: #fff !important;
+          border-color: ${C.red} !important;
+          box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15), 0 4px 14px rgba(220, 38, 38, 0.22);
+        }
       `}</style>
         <div className="flex flex-col items-center gap-3" style={{ color: C.inkSoft, fontFamily: "Inter, sans-serif" }}>
           <Loader2 className="animate-spin" size={22} /><span className="text-sm">Carregando dados da academia...</span>
@@ -560,6 +588,20 @@ function StaffApp() {
           box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
         }
         button:not(:disabled):active { transform: scale(0.97); }
+
+        /* Ações destrutivas: excluir, remover e cancelar ficam vermelhas */
+        .btn-danger:not(:disabled) {
+          border-color: ${C.red} !important;
+          color: ${C.red} !important;
+        }
+        .btn-danger:not(:disabled):hover,
+        .btn-danger-icon:not(:disabled):hover,
+        .btn-danger-text:not(:disabled):hover {
+          background: ${C.red} !important;
+          color: #fff !important;
+          border-color: ${C.red} !important;
+          box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15), 0 4px 14px rgba(220, 38, 38, 0.22);
+        }
 
         button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid ${C.lime}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { *{ transition:none!important; animation:none!important; } }
@@ -723,7 +765,7 @@ function Alunos({ students, api, payments, checkins }) {
             <Field label="Telefone"><input style={inputStyle} value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 90000-0000" /></Field>
             <Field label="Plano"><select style={inputStyle} value={form.plano} onChange={(e) => setForm({ ...form, plano: e.target.value })}><option>Mensal</option><option>Trimestral</option><option>Anual</option></select></Field>
             <Field label="Data de matrícula"><input type="date" style={inputStyle} value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} /></Field>
-            <div className="sm:col-span-2 lg:col-span-4 flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar aluno</PrimaryButton><GhostButton onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
+            <div className="sm:col-span-2 lg:col-span-4 flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar aluno</PrimaryButton><GhostButton danger onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
           </form>
         </Panel>
       )}
@@ -743,7 +785,7 @@ function Alunos({ students, api, payments, checkins }) {
                   <Badge tone={s.status === "ativo" ? "green" : "neutral"}>{s.status}</Badge>
                   <GhostButton onClick={() => copyLink(s)}><MessageCircle size={13} /> {copiedId === s.id ? "Copiado!" : "Link do aluno"}</GhostButton>
                   <GhostButton onClick={() => api.update(s.id, { status: s.status === "ativo" ? "inativo" : "ativo" })}>{s.status === "ativo" ? "Inativar" : "Reativar"}</GhostButton>
-                  <button onClick={() => api.remove(s.id)} className="p-2 rounded-lg" style={{ color: C.red }}><Trash2 size={16} /></button>
+                  <button onClick={() => api.remove(s.id)} className="btn-danger-icon p-2 rounded-lg" style={{ color: C.red }}><Trash2 size={16} /></button>
                 </div>
               </div>
             );
@@ -781,7 +823,7 @@ function Mensalidades({ students, payments, api, studentName }) {
             <Field label="Mês de referência"><input type="month" style={inputStyle} value={form.mesRef} onChange={(e) => setForm({ ...form, mesRef: e.target.value })} /></Field>
             <Field label="Vencimento"><input type="date" style={inputStyle} value={form.vencimento} onChange={(e) => setForm({ ...form, vencimento: e.target.value })} /></Field>
             <Field label="Valor (R$)"><input type="number" min="0" style={inputStyle} value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} placeholder="120" /></Field>
-            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Lançar</PrimaryButton><GhostButton onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
+            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Lançar</PrimaryButton><GhostButton danger onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
           </form>
         </Panel>
       )}
@@ -836,14 +878,14 @@ function Treinos({ students, workouts, api, studentName }) {
               <div className="flex flex-col gap-2">{exercicios.map((ex, i) => (<div key={i} className="flex gap-2"><input style={{ ...inputStyle, flex: 2 }} placeholder="Ex: Agachamento livre" value={ex.nome} onChange={(e) => updateExercicio(i, "nome", e.target.value)} /><input style={{ ...inputStyle, flex: 1 }} placeholder="4x10" value={ex.series} onChange={(e) => updateExercicio(i, "series", e.target.value)} /></div>))}</div>
               <button type="button" onClick={() => setExercicios([...exercicios, { nome: "", series: "" }])} className="text-xs font-semibold mt-2" style={{ color: C.limeDark }}>+ adicionar exercício</button>
             </div>
-            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar treino</PrimaryButton><GhostButton onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
+            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar treino</PrimaryButton><GhostButton danger onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
           </form>
         </Panel>
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {workouts.map((w) => (
           <Panel key={w.id} className="p-5 flex flex-col gap-3">
-            <div className="flex items-start justify-between"><div><div className="font-semibold text-sm">{w.nome}</div><div className="text-xs" style={{ color: C.inkSoft }}>{studentName(w.studentId)}</div></div><button onClick={() => api.remove(w.id)} style={{ color: C.red }}><Trash2 size={15} /></button></div>
+            <div className="flex items-start justify-between"><div><div className="font-semibold text-sm">{w.nome}</div><div className="text-xs" style={{ color: C.inkSoft }}>{studentName(w.studentId)}</div></div><button onClick={() => api.remove(w.id)} className="btn-danger-icon" style={{ color: C.red }}><Trash2 size={15} /></button></div>
             <Badge tone="neutral">{w.tipo}</Badge>
             <div className="flex flex-col gap-1.5 mt-1">
               {w.exercicios.map((ex, i) => (<div key={i} className="flex justify-between text-sm"><span>{ex.nome}</span><span style={{ ...fontMono, color: C.inkSoft }}>{ex.series}</span></div>))}
@@ -980,7 +1022,7 @@ function Avaliacoes({ students, evaluations, api }) {
                   <Badge key={k} tone="neutral">{MEDIDAS_FIELDS.find((f) => f.key === k)?.label.split(" ")[0]} {v}cm</Badge>
                 ))}
                 {e.obs && <div className="text-xs" style={{ color: C.inkSoft }}>{e.obs}</div>}
-                <button onClick={() => api.remove(e.id)} className="ml-auto" style={{ color: C.red }}><Trash2 size={15} /></button>
+                <button onClick={() => api.remove(e.id)} className="btn-danger-icon ml-auto" style={{ color: C.red }}><Trash2 size={15} /></button>
               </div>
             );
           })}
@@ -1017,7 +1059,7 @@ function Turmas({ students, classes, api, studentName }) {
               <div className="text-sm font-medium mb-2" style={{ color: C.inkSoft }}>Dias da semana</div>
               <div className="flex gap-2 flex-wrap">{WEEKDAYS.map((d) => (<button type="button" key={d.id} onClick={() => toggleDia(d.id)} className="px-3 py-1.5 rounded-full text-xs font-semibold" style={{ background: form.dias.includes(d.id) ? C.ink : "transparent", color: form.dias.includes(d.id) ? "#fff" : C.inkSoft, border: `1px solid ${form.dias.includes(d.id) ? C.ink : C.border}` }}>{d.label}</button>))}</div>
             </div>
-            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar turma</PrimaryButton><GhostButton onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
+            <div className="flex gap-2"><PrimaryButton type="submit"><Check size={16} /> Salvar turma</PrimaryButton><GhostButton danger onClick={() => setShowForm(false)}>Cancelar</GhostButton></div>
           </form>
         </Panel>
       )}
@@ -1026,11 +1068,11 @@ function Turmas({ students, classes, api, studentName }) {
           <Panel key={c.id} className="p-5 flex flex-col gap-3">
             <div className="flex items-start justify-between">
               <div><div className="font-semibold text-sm">{c.nome}</div><div className="text-xs" style={{ color: C.inkSoft }}>{c.dias.map((d) => WEEKDAYS.find((w) => w.id === d)?.label).join(" · ")} às {c.horario}{c.instrutor ? ` · ${c.instrutor}` : ""}</div></div>
-              <button onClick={() => api.remove(c.id)} style={{ color: C.red }}><Trash2 size={15} /></button>
+              <button onClick={() => api.remove(c.id)} className="btn-danger-icon" style={{ color: C.red }}><Trash2 size={15} /></button>
             </div>
             <Badge tone={c.inscritos.length >= c.capacidade ? "red" : "green"}>{c.inscritos.length}/{c.capacidade} vagas</Badge>
             <div className="flex flex-col gap-1.5">
-              {c.inscritos.map((sid) => (<div key={sid} className="flex items-center gap-2 text-sm"><Avatar name={studentName(sid)} size={24} /><span className="flex-1">{studentName(sid)}</span><button onClick={() => unenroll(c, sid)} className="text-xs" style={{ color: C.inkSoft }}>remover</button></div>))}
+              {c.inscritos.map((sid) => (<div key={sid} className="flex items-center gap-2 text-sm"><Avatar name={studentName(sid)} size={24} /><span className="flex-1">{studentName(sid)}</span><button onClick={() => unenroll(c, sid)} className="btn-danger-text text-xs" style={{ color: C.red }}>remover</button></div>))}
               {c.inscritos.length === 0 && <div className="text-xs" style={{ color: C.inkSoft }}>Nenhum aluno inscrito.</div>}
             </div>
             <div className="flex gap-2 mt-1">
@@ -1338,6 +1380,20 @@ function AlunoPortal({ token }) {
           box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
         }
         button:not(:disabled):active { transform: scale(0.97); }
+
+        /* Ações destrutivas: excluir, remover e cancelar ficam vermelhas */
+        .btn-danger:not(:disabled) {
+          border-color: ${C.red} !important;
+          color: ${C.red} !important;
+        }
+        .btn-danger:not(:disabled):hover,
+        .btn-danger-icon:not(:disabled):hover,
+        .btn-danger-text:not(:disabled):hover {
+          background: ${C.red} !important;
+          color: #fff !important;
+          border-color: ${C.red} !important;
+          box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15), 0 4px 14px rgba(220, 38, 38, 0.22);
+        }
       `}</style>
       <div className="max-w-2xl mx-auto px-5 py-8">
         <div className="mb-6">
