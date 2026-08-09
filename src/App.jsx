@@ -392,7 +392,16 @@ function Login({ settings }) {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center px-4" style={{ background: C.sidebar, fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+        button:not(:disabled) { transition: all 0.2s ease; }
+        button:not(:disabled):hover {
+          background: ${C.lime} !important;
+          color: ${C.ink} !important;
+          border-color: ${C.lime} !important;
+          box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
+        }
+        button:not(:disabled):active { transform: scale(0.97); }
+      `}</style>
       <div className="w-full max-w-sm">
         {settings?.logoUrl ? (
           <img src={settings.logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover mx-auto mb-3" />
@@ -514,7 +523,16 @@ function StaffApp() {
   if (!dataReady) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ background: C.bg }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');`}</style>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+        button:not(:disabled) { transition: all 0.2s ease; }
+        button:not(:disabled):hover {
+          background: ${C.lime} !important;
+          color: ${C.ink} !important;
+          border-color: ${C.lime} !important;
+          box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
+        }
+        button:not(:disabled):active { transform: scale(0.97); }
+      `}</style>
         <div className="flex flex-col items-center gap-3" style={{ color: C.inkSoft, fontFamily: "Inter, sans-serif" }}>
           <Loader2 className="animate-spin" size={22} /><span className="text-sm">Carregando dados da academia...</span>
         </div>
@@ -532,6 +550,17 @@ function StaffApp() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
         * { box-sizing: border-box; }
         ::selection { background: ${C.lime}; color: ${C.ink}; }
+
+        /* HOVER VERDE GLOBAL EM TODOS OS BOTÕES */
+        button:not(:disabled) { transition: all 0.2s ease; }
+        button:not(:disabled):hover {
+          background: ${C.lime} !important;
+          color: ${C.ink} !important;
+          border-color: ${C.lime} !important;
+          box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
+        }
+        button:not(:disabled):active { transform: scale(0.97); }
+
         button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid ${C.lime}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { *{ transition:none!important; animation:none!important; } }
       `}</style>
@@ -1300,7 +1329,16 @@ function AlunoPortal({ token }) {
 
   return (
     <div className="min-h-screen w-full" style={{ background: C.bg, color: C.ink, fontFamily: "Inter, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+        button:not(:disabled) { transition: all 0.2s ease; }
+        button:not(:disabled):hover {
+          background: ${C.lime} !important;
+          color: ${C.ink} !important;
+          border-color: ${C.lime} !important;
+          box-shadow: 0 0 0 2px rgba(196, 241, 53, 0.18), 0 4px 14px rgba(196, 241, 53, 0.25);
+        }
+        button:not(:disabled):active { transform: scale(0.97); }
+      `}</style>
       <div className="max-w-2xl mx-auto px-5 py-8">
         <div className="mb-6">
           <div style={{ ...fontDisplay, fontSize: "1.8rem", lineHeight: 1 }}>Olá, {student.nome.split(" ")[0]}</div>
