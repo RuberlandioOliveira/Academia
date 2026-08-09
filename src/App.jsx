@@ -200,7 +200,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ---------- design tokens ----------
 const C = {
   bg: "#EDEBE6", panel: "#FFFFFF", ink: "#000000", inkSoft: "#000000",
-  sidebar: "#041248", sidebarSoft: "#055916", sidebarLine: "#ffffff",
+  sidebar: "#040f3c", sidebarSoft: "#055916", sidebarLine: "#ffffff",
   lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
@@ -302,8 +302,8 @@ async function deleteRow(entity, id) {
 async function fetchSettings() {
   const { data, error } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   if (error) throw error;
-  if (!data) return { nome: "FERRO", telefone: "", endereco: "", email: "", logoUrl: "" };
-  return { nome: data.nome || "FERRO", telefone: data.telefone || "", endereco: data.endereco || "", email: data.email || "", logoUrl: data.logo_url || "" };
+  if (!data) return { nome: "SISTEMA", telefone: "", endereco: "", email: "", logoUrl: "" };
+  return { nome: data.nome || "SISTEMA", telefone: data.telefone || "", endereco: data.endereco || "", email: data.email || "", logoUrl: data.logo_url || "" };
 }
 async function saveSettings(patch) {
   const { data, error } = await supabase.from("settings")
@@ -311,7 +311,7 @@ async function saveSettings(patch) {
     .eq("id", 1)
     .select().single();
   if (error) throw error;
-  return { nome: data.nome || "FERRO", telefone: data.telefone || "", endereco: data.endereco || "", email: data.email || "", logoUrl: data.logo_url || "" };
+  return { nome: data.nome || "SISTEMA", telefone: data.telefone || "", endereco: data.endereco || "", email: data.email || "", logoUrl: data.logo_url || "" };
 }
 async function uploadLogo(file) {
   const ext = file.name.split(".").pop();
