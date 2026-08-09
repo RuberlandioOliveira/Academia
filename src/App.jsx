@@ -176,9 +176,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- design tokens ----------
 const C = {
-  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#1C1C1E", inkSoft: "#6B6A66",
-  sidebar: "#16171B", sidebarSoft: "#232428", sidebarLine: "#333438",
-  lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
+  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#060606", inkSoft: "#070707",
+  sidebar: "#020c32", sidebarSoft: "#066516", sidebarLine: "#ffffff",
+  lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#ffffff",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
 };
@@ -363,16 +363,16 @@ function Login({ settings }) {
         ) : (
           <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "FERRO"}</div>
         )}
-        {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.8rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "FERRO"}</div>}
-        <div className="text-sm text-center mb-8" style={{ color: "#9A9A9E" }}>gestão da academia</div>
+        {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.8rem", color: C.lime, textAlign: "center" }}>{settings?.nome || "Sistema"}</div>}
+        <div className="text-sm text-center mb-8" style={{ color: "#ffffff" }}>gestão da academia</div>
         <form onSubmit={submit} className="flex flex-col gap-3 p-6 rounded-2xl" style={{ background: C.sidebarSoft, border: `1px solid ${C.sidebarLine}` }}>
-          <input required type="email" placeholder="e-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#1C1D21", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
+          <input required type="email" placeholder="e-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#26272d", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
           <input required type="password" placeholder="senha" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "#1C1D21", color: "#fff", border: `1px solid ${C.sidebarLine}` }} />
           {error && <div className="text-xs" style={{ color: C.red }}>{error}</div>}
           <button type="submit" disabled={loading} className="mt-1 py-2.5 rounded-lg text-sm font-bold disabled:opacity-50" style={{ background: C.lime, color: C.ink }}>
             {loading ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
           </button>
-          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-xs mt-1" style={{ color: "#9A9A9E" }}>
+          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-xs mt-1" style={{ color: "#ffffff" }}>
             {mode === "signin" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
           </button>
         </form>
@@ -522,7 +522,7 @@ function StaffApp() {
           </nav>
         </div>
         <div className="px-4 pb-6">
-          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#8C8C90" }}>
+          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#ffffff" }}>
             <LogOut size={13} /> Sair
           </button>
         </div>
@@ -533,7 +533,7 @@ function StaffApp() {
           const Icon = t.icon; const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 px-2 py-1 shrink-0">
-              <Icon size={17} color={active ? C.lime : "#8C8C90"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#8C8C90" }}>{t.label}</span>
+              <Icon size={17} color={active ? C.lime : "#ffffff"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#ffffff" }}>{t.label}</span>
             </button>
           );
         })}
@@ -577,7 +577,7 @@ function Dashboard({ students, payments, checkins, studentName }) {
             <div key={s.label} className="p-5" style={{ background: C.sidebar }}>
               <Icon size={16} color={C.lime} />
               <div style={{ ...fontMono, fontSize: "1.9rem", color: C.lime, lineHeight: 1 }} className="mt-3">{s.value}</div>
-              <div className="text-xs mt-2" style={{ color: "#9A9A9E" }}>{s.label}</div>
+              <div className="text-xs mt-2" style={{ color: "#ffffff" }}>{s.label}</div>
             </div>
           );
         })}
@@ -978,16 +978,16 @@ function Frequencia({ students, checkins, api, studentName }) {
   if (fullscreen) {
     return (
       <div className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6" style={{ background: C.sidebar }}>
-        <button onClick={() => setFullscreen(false)} className="absolute top-6 right-6 p-2 rounded-lg" style={{ color: "#9A9A9E" }}><Minimize2 size={20} /></button>
+        <button onClick={() => setFullscreen(false)} className="absolute top-6 right-6 p-2 rounded-lg" style={{ color: "#ffffff" }}><Minimize2 size={20} /></button>
         <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime }}>Check-in</div>
-        <div className="text-sm mb-8" style={{ color: "#9A9A9E" }}>{fmtDate(today)}</div>
-        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="text-lg rounded-xl px-4 py-3 mb-4 w-full max-w-sm" style={{ background: C.sidebarSoft, color: "#fff", border: `1px solid ${C.sidebarLine}` }}>
+        <div className="text-sm mb-8" style={{ color: "#ffffff" }}>{fmtDate(today)}</div>
+        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="text-lg rounded-xl px-4 py-3 mb-4 w-full max-w-sm" style={{ background: C.sidebarSoft, color: "#ffffff", border: `1px solid ${C.sidebarLine}` }}>
           {students.filter((s) => s.status === "ativo").map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
         </select>
         <button onClick={registerCheckin} className="w-full max-w-sm py-4 rounded-xl text-lg font-bold" style={{ background: C.lime, color: C.ink }}>Registrar entrada</button>
         <div className="mt-10 w-full max-w-sm">
-          <div className="text-xs mb-3" style={{ color: "#9A9A9E" }}>últimos check-ins de hoje</div>
-          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#E4E4E6" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}</span></div>))}</div>
+          <div className="text-xs mb-3" style={{ color: "#ffffff" }}>últimos check-ins de hoje</div>
+          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#ffffff" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}</span></div>))}</div>
         </div>
       </div>
     );
