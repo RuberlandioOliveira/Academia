@@ -556,16 +556,26 @@ function StaffApp() {
             {visibleTabs.map((t) => {
               const Icon = t.icon; const active = tab === t.id;
               return (
-                <button key={t.id} onClick={() => setTab(t.id)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" style={{ background: active ? C.sidebarSoft : "transparent", color: active ? C.lime : "#C7C7CB", borderLeft: active ? `3px solid ${C.lime}` : "3px solid transparent" }}>
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-lime-800"
+                  style={{
+                    background: active ? C.sidebarSoft : "transparent",
+                    color: active ? C.lime : "#C7C7CB",
+                    borderLeft: active ? `3px solid ${C.lime}` : "3px solid transparent"
+                  }}
+                >
                   <Icon size={17} />{t.label}
                 </button>
+
               );
             })}
           </nav>
         </div>
         <div className="px-4 pb-6">
           <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#ffffff" }}>
-            <LogOut size={13} /> Sair
+            <LogOut size={18} /> Sair
           </button>
         </div>
       </aside>
