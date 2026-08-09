@@ -199,8 +199,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- design tokens ----------
 const C = {
-  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#1C1C1E", inkSoft: "#6B6A66",
-  sidebar: "#16171B", sidebarSoft: "#232428", sidebarLine: "#333438",
+  bg: "#EDEBE6", panel: "#FFFFFF", ink: "#000000", inkSoft: "#000000",
+  sidebar: "#041248", sidebarSoft: "#055916", sidebarLine: "#ffffff",
   lime: "#C4F135", limeDark: "#9FCB1E", red: "#E0384B", redSoft: "#FBE3E6",
   greenSoft: "#E6F4D9", greenText: "#4C7A16", amberSoft: "#FBEDD3", amberText: "#9C6B10",
   blueSoft: "#E1EEF9", blueText: "#2B6CA3", border: "#DEDAD1",
@@ -544,9 +544,9 @@ function StaffApp() {
             {settings?.logoUrl ? (
               <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 rounded-lg object-cover mb-1" />
             ) : (
-              <div style={{ ...fontDisplay, fontSize: "2rem", lineHeight: 1, color: C.lime }}>{settings?.nome || "FERRO"}</div>
+              <div style={{ ...fontDisplay, fontSize: "2rem", lineHeight: 1, color: C.lime }}>{settings?.nome || "SISTEMA"}</div>
             )}
-            {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.3rem", lineHeight: 1, color: C.lime }}>{settings?.nome || "FERRO"}</div>}
+            {settings?.logoUrl && <div style={{ ...fontDisplay, fontSize: "1.3rem", lineHeight: 1, color: C.lime }}>{settings?.nome || "SISTEMA"}</div>}
             <div className="text-xs mt-1" style={{ color: "#9A9A9E" }}>gestão da academia</div>
           </div>
           <div className="px-6 pt-4 flex items-center gap-1.5 text-xs" style={{ color: "#9A9A9E" }}>
@@ -564,7 +564,7 @@ function StaffApp() {
           </nav>
         </div>
         <div className="px-4 pb-6">
-          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#8C8C90" }}>
+          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ color: "#ffffff" }}>
             <LogOut size={13} /> Sair
           </button>
         </div>
@@ -575,7 +575,7 @@ function StaffApp() {
           const Icon = t.icon; const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)} className="flex flex-col items-center gap-0.5 px-2 py-1 shrink-0">
-              <Icon size={17} color={active ? C.lime : "#8C8C90"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#8C8C90" }}>{t.label}</span>
+              <Icon size={17} color={active ? C.lime : "#ffffff"} /><span className="text-[9px]" style={{ color: active ? C.lime : "#8C8C90" }}>{t.label}</span>
             </button>
           );
         })}
