@@ -196,6 +196,7 @@ import {
 const SUPABASE_URL = "https://grxhispuduwibclhxnch.supabase.co"; // TODO: cole a Project URL
 const SUPABASE_ANON_KEY = "sb_publishable_PgvQEQ42x1VL0BtWDtU9_Q_EnSQFCDq"; // TODO: cole a anon public key
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ---------- design tokens ----------
 const C = {
   bg: "#EDEBE6", panel: "#FFFFFF", ink: "#1C1C1E", inkSoft: "#6B6A66",
