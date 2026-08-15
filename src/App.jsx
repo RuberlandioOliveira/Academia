@@ -179,6 +179,10 @@
 
    create policy "dono read all profiles" on profiles for select using (is_dono());
    create policy "dono update all profiles" on profiles for update using (is_dono());
+
+   Check-in com horário de saída (para medir tempo de treino e lotação):
+
+   alter table checkins add column if not exists hora_saida text;
    ========================================================================= */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -239,6 +243,19 @@ function todayISO() { return new Date().toISOString().slice(0, 10); }
 function addDays(iso, n) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
 function initials(name) { return name.split(" ").filter(Boolean).slice(0, 2).map((s) => s[0]).join("").toUpperCase(); }
 function mesLabel(mesRef) { const [y, m] = mesRef.split("-"); return `${MONTHS[Number(m) - 1]}/${y.slice(2)}`; }
+function duracaoMin(entrada, saida) {
+  if (!entrada || !saida) return null;
+  const [h1, m1] = entrada.split(":").map(Number);
+  const [h2, m2] = saida.split(":").map(Number);
+  const min = h2 * 60 + m2 - (h1 * 60 + m1);
+  return min >= 0 ? min : null;
+}
+function fmtDuracao(min) {
+  if (min == null) return "";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h}h${m > 0 ? m + "min" : ""}` : `${m}min`;
+}
 const today = todayISO();
 
 // ---------- mapeamento camelCase (app) <-> snake_case (supabase) ----------
@@ -260,8 +277,8 @@ const TABLE_MAP = {
   },
   checkins: {
     table: "checkins",
-    toDb: (c) => ({ student_id: c.studentId, data: c.data, hora: c.hora }),
-    fromDb: (r) => ({ id: r.id, studentId: r.student_id, data: r.data, hora: r.hora }),
+    toDb: (c) => ({ student_id: c.studentId, data: c.data, hora: c.hora, hora_saida: c.horaSaida ?? null }),
+    fromDb: (r) => ({ id: r.id, studentId: r.student_id, data: r.data, hora: r.hora, horaSaida: r.hora_saida }),
   },
   evaluations: {
     table: "evaluations",
@@ -507,6 +524,7 @@ function StaffApp() {
     },
     checkins: {
       add: (obj) => withError(async () => { const row = await insertRow("checkins", obj); setCheckins((p) => [...p, row]); }),
+      update: (id, patch) => withError(async () => { const cur = checkins.find((c) => c.id === id); const row = await updateRow("checkins", id, { ...cur, ...patch }); setCheckins((p) => p.map((c) => (c.id === id ? row : c))); }),
     },
     evaluations: {
       add: (obj) => withError(async () => { const row = await insertRow("evaluations", obj); setEvaluations((p) => [...p, row]); }),
@@ -670,7 +688,7 @@ function StaffApp() {
         {tab === "avaliacoes" && <Avaliacoes students={students} evaluations={evaluations} api={api.evaluations} />}
         {tab === "turmas" && <Turmas students={students} classes={classes} api={api.classes} studentName={studentName} />}
         {tab === "frequencia" && <Frequencia students={students} checkins={checkins} api={api.checkins} studentName={studentName} />}
-        {tab === "relatorios" && <Relatorios students={students} payments={payments} />}
+        {tab === "relatorios" && <Relatorios students={students} payments={payments} checkins={checkins} />}
         {tab === "configuracoes" && <Configuracoes settings={settings} onSave={api.settings.save} currentUserId={session.user.id} />}
       </main>
     </div>
@@ -681,12 +699,13 @@ function StaffApp() {
 function Dashboard({ students, payments, checkins, studentName }) {
   const activeStudents = students.filter((s) => s.status === "ativo");
   const checkinsToday = checkins.filter((c) => c.data === today);
+  const noAcademiaAgora = checkinsToday.filter((c) => !c.horaSaida);
   const overdue = payments.filter((p) => p.status === "atrasado");
   const revenueMonth = payments.filter((p) => p.status === "pago" && p.mesRef === today.slice(0, 7)).reduce((s, p) => s + p.valor, 0);
   const upcoming = payments.filter((p) => p.status !== "pago" && p.vencimento >= today && p.vencimento <= addDays(today, 7)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
   const stats = [
     { label: "Alunos ativos", value: activeStudents.length, icon: Users },
-    { label: "Check-ins hoje", value: checkinsToday.length, icon: Flame },
+    { label: "Na academia agora", value: noAcademiaAgora.length, icon: Flame },
     { label: "Mensalidades atrasadas", value: overdue.length, icon: AlertTriangle },
     { label: "Receita do mês", value: fmtBRL(revenueMonth), icon: TrendingUp },
   ];
@@ -1095,22 +1114,40 @@ function Frequencia({ students, checkins, api, studentName }) {
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [fullscreen, setFullscreen] = useState(false);
   const checkinsToday = checkins.filter((c) => c.data === today);
-  function registerCheckin() { if (!studentId) return; api.add({ studentId, data: today, hora: new Date().toTimeString().slice(0, 5) }); }
+  const noAcademiaAgora = checkinsToday.filter((c) => !c.horaSaida);
+
+  function findOpen(sid) {
+    return checkinsToday.filter((c) => c.studentId === sid && !c.horaSaida).slice(-1)[0];
+  }
+
+  function toggleCheckin(sid) {
+    if (!sid) return;
+    const open = findOpen(sid);
+    const hora = new Date().toTimeString().slice(0, 5);
+    if (open) api.update(open.id, { horaSaida: hora });
+    else api.add({ studentId: sid, data: today, hora, horaSaida: null });
+  }
+
+  const openSelected = findOpen(studentId);
   const totalCounts = useMemo(() => { const map = {}; students.forEach((s) => (map[s.id] = 0)); checkins.forEach((c) => { if (map[c.studentId] !== undefined) map[c.studentId] += 1; }); return map; }, [checkins, students]);
 
   if (fullscreen) {
+    const open = findOpen(studentId);
     return (
       <div className="fixed inset-0 z-40 flex flex-col items-center justify-center px-6" style={{ background: C.sidebar }}>
         <button onClick={() => setFullscreen(false)} className="absolute top-6 right-6 p-2 rounded-lg" style={{ color: "#9A9A9E" }}><Minimize2 size={20} /></button>
-        <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime }}>Check-in</div>
-        <div className="text-sm mb-8" style={{ color: "#9A9A9E" }}>{fmtDate(today)}</div>
+        <div style={{ ...fontDisplay, fontSize: "2.6rem", color: C.lime }}>{open ? "Saída" : "Check-in"}</div>
+        <div className="text-sm mb-2" style={{ color: "#9A9A9E" }}>{fmtDate(today)}</div>
+        <div className="text-xs mb-6" style={{ color: "#8C8C90" }}>{noAcademiaAgora.length} na academia agora</div>
         <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="text-lg rounded-xl px-4 py-3 mb-4 w-full max-w-sm" style={{ background: C.sidebarSoft, color: "#fff", border: `1px solid ${C.sidebarLine}` }}>
           {students.filter((s) => s.status === "ativo").map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
         </select>
-        <button onClick={registerCheckin} className="w-full max-w-sm py-4 rounded-xl text-lg font-bold" style={{ background: C.lime, color: C.ink }}>Registrar entrada</button>
+        <button onClick={() => toggleCheckin(studentId)} className="w-full max-w-sm py-4 rounded-xl text-lg font-bold" style={{ background: C.lime, color: C.ink }}>
+          {open ? "Registrar saída" : "Registrar entrada"}
+        </button>
         <div className="mt-10 w-full max-w-sm">
           <div className="text-xs mb-3" style={{ color: "#9A9A9E" }}>últimos check-ins de hoje</div>
-          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#E4E4E6" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}</span></div>))}</div>
+          <div className="flex flex-col gap-2">{checkinsToday.slice().reverse().slice(0, 6).map((c) => (<div key={c.id} className="flex items-center gap-3 text-sm" style={{ color: "#E4E4E6" }}><Avatar name={studentName(c.studentId)} size={26} /><span className="flex-1">{studentName(c.studentId)}</span><span style={fontMono}>{c.hora}{c.horaSaida ? ` - ${c.horaSaida}` : ""}</span></div>))}</div>
         </div>
       </div>
     );
@@ -1118,17 +1155,42 @@ function Frequencia({ students, checkins, api, studentName }) {
 
   return (
     <div>
-      <Header title="Frequência" subtitle={`${checkinsToday.length} check-ins hoje · ${fmtDate(today)}`} />
+      <Header title="Frequência" subtitle={`${checkinsToday.length} check-ins hoje · ${noAcademiaAgora.length} na academia agora · ${fmtDate(today)}`} />
       <Panel className="p-5 mb-6 flex flex-wrap items-end gap-4">
-        <Field label="Registrar check-in para"><select style={{ ...inputStyle, minWidth: 220 }} value={studentId} onChange={(e) => setStudentId(e.target.value)}>{students.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select></Field>
-        <PrimaryButton onClick={registerCheckin}><CalendarCheck size={16} /> Registrar check-in</PrimaryButton>
+        <Field label="Registrar para"><select style={{ ...inputStyle, minWidth: 220 }} value={studentId} onChange={(e) => setStudentId(e.target.value)}>{students.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select></Field>
+        <PrimaryButton onClick={() => toggleCheckin(studentId)}><CalendarCheck size={16} /> {openSelected ? "Registrar saída" : "Registrar check-in"}</PrimaryButton>
         <GhostButton onClick={() => setFullscreen(true)}><Maximize2 size={14} /> Tela cheia (recepção)</GhostButton>
       </Panel>
+
+      <Panel className="p-5 mb-6">
+        <div className="font-semibold mb-4">Na academia agora ({noAcademiaAgora.length})</div>
+        {noAcademiaAgora.length === 0 && <div className="text-sm" style={{ color: C.inkSoft }}>Ninguém treinando no momento.</div>}
+        <div className="flex flex-col gap-3">
+          {noAcademiaAgora.map((c) => (
+            <div key={c.id} className="flex items-center gap-3">
+              <Avatar name={studentName(c.studentId)} size={30} />
+              <div className="text-sm flex-1">{studentName(c.studentId)}</div>
+              <Badge tone="green">desde {c.hora}</Badge>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
       <div className="grid md:grid-cols-2 gap-6">
         <Panel className="p-5">
           <div className="font-semibold mb-4">Check-ins de hoje</div>
           <div className="flex flex-col gap-3">
-            {checkinsToday.slice().reverse().map((c) => (<div key={c.id} className="flex items-center gap-3"><Avatar name={studentName(c.studentId)} size={30} /><div className="text-sm flex-1">{studentName(c.studentId)}</div><div className="text-xs" style={fontMono}>{c.hora}</div></div>))}
+            {checkinsToday.slice().reverse().map((c) => {
+              const min = duracaoMin(c.hora, c.horaSaida);
+              return (
+                <div key={c.id} className="flex items-center gap-3">
+                  <Avatar name={studentName(c.studentId)} size={30} />
+                  <div className="text-sm flex-1">{studentName(c.studentId)}</div>
+                  <div className="text-xs" style={fontMono}>{c.hora}{c.horaSaida ? ` - ${c.horaSaida}` : ""}</div>
+                  {min != null ? <Badge tone="neutral">{fmtDuracao(min)}</Badge> : <Badge tone="green">treinando</Badge>}
+                </div>
+              );
+            })}
             {checkinsToday.length === 0 && <div className="text-sm" style={{ color: C.inkSoft }}>Nenhum check-in registrado hoje.</div>}
           </div>
         </Panel>
@@ -1142,7 +1204,7 @@ function Frequencia({ students, checkins, api, studentName }) {
 }
 
 // ---------- relatórios ----------
-function Relatorios({ students, payments }) {
+function Relatorios({ students, payments, checkins }) {
   const revenueByMonth = useMemo(() => {
     const map = {};
     payments.filter((p) => p.status === "pago").forEach((p) => { map[p.mesRef] = (map[p.mesRef] || 0) + p.valor; });
@@ -1154,6 +1216,8 @@ function Relatorios({ students, payments }) {
   const ativos = students.filter((s) => s.status === "ativo").length;
   const inativos = students.length - ativos;
   const retencao = students.length ? Math.round((ativos / students.length) * 100) : 0;
+  const duracoes = checkins.map((c) => duracaoMin(c.hora, c.horaSaida)).filter((m) => m != null);
+  const tempoMedio = duracoes.length ? Math.round(duracoes.reduce((s, m) => s + m, 0) / duracoes.length) : null;
 
   return (
     <div>
@@ -1174,9 +1238,10 @@ function Relatorios({ students, payments }) {
           </div>
         ) : <div className="text-sm py-8 text-center" style={{ color: C.inkSoft }}>Sem pagamentos registrados ainda.</div>}
       </Panel>
-      <div className="grid sm:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-3 gap-6">
         <Panel className="p-5"><div className="font-semibold mb-3">Inadimplência</div><div style={{ ...fontMono, fontSize: "2.2rem", color: inadimplencia > 15 ? C.red : C.ink }}>{inadimplencia}%</div><div className="text-xs mt-1" style={{ color: C.inkSoft }}>{atrasados} de {totalPagamentos} cobranças em atraso</div></Panel>
         <Panel className="p-5"><div className="font-semibold mb-3">Retenção de alunos</div><div style={{ ...fontMono, fontSize: "2.2rem" }}>{retencao}%</div><div className="text-xs mt-1" style={{ color: C.inkSoft }}>{ativos} ativos · {inativos} inativos de {students.length} cadastrados</div></Panel>
+        <Panel className="p-5"><div className="font-semibold mb-3">Tempo médio de treino</div><div style={{ ...fontMono, fontSize: "2.2rem" }}>{tempoMedio != null ? fmtDuracao(tempoMedio) : "—"}</div><div className="text-xs mt-1" style={{ color: C.inkSoft }}>com base em {duracoes.length} check-ins com saída registrada</div></Panel>
       </div>
     </div>
   );
