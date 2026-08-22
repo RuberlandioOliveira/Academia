@@ -627,6 +627,14 @@ function StaffApp() {
 
       {saveError && <div className="fixed top-3 right-3 z-50 px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: C.redSoft, color: C.red }}>Não foi possível salvar no banco. Tente novamente.</div>}
 
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="md:hidden fixed top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold"
+        style={{ background: C.sidebar, color: "#fff", border: `1px solid ${C.sidebarLine}` }}
+      >
+        <LogOut size={14} /> Sair
+      </button>
+
       <aside className="hidden md:flex flex-col justify-between shrink-0" style={{ width: 224, background: C.sidebar, color: "#fff" }}>
         <div>
           <div className="px-6 pt-7 pb-5" style={{ borderBottom: `1px solid ${C.sidebarLine}` }}>
